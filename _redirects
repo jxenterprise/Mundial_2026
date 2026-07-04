@@ -1,0 +1,5 @@
+# Compatibilidad: algunos navegadores/bots piden /favicon.ico en la raíz
+# sin leer el <link rel="icon">, aunque el archivo real vive en /img/.
+# El 200 al final hace que Cloudflare Pages sirva el archivo (rewrite),
+# no que redirija visiblemente la URL.
+/favicon.ico /img/favicon.ico 200

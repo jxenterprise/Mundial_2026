@@ -1,0 +1,7 @@
+# Google AdSense — ads.txt
+# Cuando tengas tu cuenta aprobada: reemplaza pub-0000000000000000 por tu
+# ID de editor real (Cuenta → Información de la cuenta, empieza por "pub-")
+# y descomenta la línea de abajo. Sin esto activo, AdSense puede mostrar
+# advertencias de "vendedor no autorizado" y perder ingresos.
+#
+# google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0

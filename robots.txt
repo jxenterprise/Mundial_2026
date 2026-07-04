@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# CAMBIAR por tu dominio final
+Sitemap: https://mundial2026-partidos.pages.dev/sitemap.xml
