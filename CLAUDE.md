@@ -94,8 +94,15 @@ En `js/data.js` → `DATOS_MUNDIAL.partidos`: cambiar `estado`, `gl`, `gv`,
 
 - Proveedor: football-data.org v4, competición `WC` (plan gratuito).
 - Variable de entorno en Cloudflare Pages: `FOOTBALL_DATA_TOKEN`.
-- La key **nunca** va en el frontend. La Function cachea 60 s para respetar
-  el límite gratuito (10 req/min) sin importar cuántos visitantes haya.
+- La key **nunca** va en el frontend. La Function cachea 20 s (`s-maxage=20`
+  en `functions/api/partidos.js`, y `INTERVALO_VIVO_MS` igual en `script.js`)
+  para respetar el límite gratuito (10 req/min) sin importar cuántos
+  visitantes haya — antes era 60 s, se bajó a 20 s el 5 jul 2026 porque un
+  gol tardaba demasiado en reflejarse.
+- **El retraso real de un gol tiene 2 componentes**: (1) football-data.org
+  (la fuente gratuita) no es instantánea, eso no se puede acelerar desde acá;
+  (2) la caché de 20 s de arriba. En el peor caso el gol puede tardar
+  ~20-40 s en verse, nunca será instantáneo como una transmisión oficial.
 - **Confirmado funcionando en producción el 4 jul 2026** (antes de esa fecha
   el archivo de la Function estaba mal ubicado en la raíz en vez de
   `functions/api/`, y por eso nunca se ejecutaba — si algo similar vuelve a

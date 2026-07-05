@@ -10,7 +10,7 @@
   "use strict";
 
   const TITULO_BASE = document.title;
-  const INTERVALO_VIVO_MS = 60_000;      // sondeo cuando la API funciona
+  const INTERVALO_VIVO_MS = 20_000;      // sondeo cuando la API funciona (igual al s-maxage de la Function)
   const REINTENTO_API_MS  = 5 * 60_000;  // reintento silencioso si falla
   const VIVO_CADUCA_MIN   = 165;         // en modo respaldo, un "vivo" viejo pasa a "por confirmar"
 

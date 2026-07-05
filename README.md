@@ -31,9 +31,10 @@ con `FOOTBALL_DATA_TOKEN` configurado y confirmado funcionando desde el 4 jul 20
 - **⭐ Mi selección**: elige tu equipo y sus partidos se destacan y fijan primero (se guarda en tu navegador).
 - **Compartir por WhatsApp**: cada partido tiene botón con ícono real de WhatsApp
   (SVG, no emoji) y mensaje con banderas de los dos equipos.
-- **Modo EN VIVO**: si conectas la API, se actualiza solo cada 60 s, detecta
+- **Modo EN VIVO**: si conectas la API, se actualiza solo cada 20 s, detecta
   goles (aviso + destello + título de la pestaña con el marcador) y muestra la
-  hora de última actualización.
+  hora de última actualización. Aun así, un gol puede tardar unos segundos
+  extra en verse porque la fuente gratuita (football-data.org) no es instantánea.
 - **Modo respaldo**: sin API, la web funciona igual con datos reales embebidos
   y lo dice honestamente en el chip del header ("Datos al …").
 - Horarios convertidos automáticamente a la **hora local del visitante**.
@@ -104,8 +105,9 @@ Sin la Function, la web usa el respaldo — así está diseñada.
 3. **Redeploy**. Listo: el chip del header pasará a "🔴 EN VIVO · Actualizado…".
 
 La key queda solo en el servidor de Cloudflare (nunca en el navegador) y la
-Function cachea 60 s, así que aunque entren miles de personas, a la API solo
-le llega ~1 petición por minuto.
+Function cachea 20 s (compartido entre todos los visitantes a la vez, no por
+persona), así que aunque entren miles de personas, a la API le llega como
+mucho ~3 peticiones por minuto — bien lejos del límite gratuito de 10/min.
 
 > Alternativas de API si algún día la cambias: API-Football (100 req/día
 > gratis, actualiza cada 15 s) o KickoffAPI (100 req/día gratis). Solo habría

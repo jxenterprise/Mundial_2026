@@ -129,7 +129,7 @@ export async function onRequestGet(context) {
         partidos,
         grupos,
       },
-      { "Cache-Control": "public, s-maxage=60" }
+      { "Cache-Control": "public, s-maxage=20" }
     );
 
     context.waitUntil(cache.put(claveCache, respuesta.clone()));
