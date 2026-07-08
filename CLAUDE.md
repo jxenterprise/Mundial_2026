@@ -33,6 +33,7 @@ funcionan si se mueven.
 │   └── data.js                  ← datos de respaldo (DATOS_MUNDIAL)
 ├── img/                         ← favicon.svg/.ico, icon-192/512.png, apple-touch-icon.png, og-image.png
 ├── functions/api/partidos.js    ← Cloudflare Pages Function (proxy a football-data.org)
+├── worker-goles/                ← Worker APARTE (Cron Trigger) para push de goles, opcional
 ├── _headers / _redirects        ← cabeceras de caché + rewrite de /favicon.ico
 ├── robots.txt / sitemap.xml / ads.txt / site.webmanifest
 ├── CLAUDE.md / README.md
@@ -48,6 +49,7 @@ funcionan si se mueven.
 | `img/favicon.svg/.ico`, `img/icon-*.png`, `img/apple-touch-icon.png` | Íconos | Regenerar solo si cambia la marca |
 | `img/og-image.png` | Imagen para compartir (1200×630) | Igual |
 | `site.webmanifest`, `robots.txt`, `sitemap.xml`, `_headers`, `_redirects`, `ads.txt` | PWA básico + SEO + cabeceras CF | Dominio final |
+| `worker-goles/worker.js` + `wrangler.toml` | Worker aparte (Cron Trigger, no Pages Function) que detecta goles y manda push por OneSignal | Solo si activas notificaciones push — no se despliega solo |
 
 ## Cómo fluyen los datos
 
@@ -128,6 +130,42 @@ En `js/data.js` → `DATOS_MUNDIAL.partidos`: cambiar `estado`, `gl`, `gv`,
 - `prefers-reduced-motion` respetado; hovers solo bajo `@media (hover:hover)`.
 - Tipos: Anton (display/números) + Archivo (cuerpo). Banderas = imágenes
   reales de flagcdn.com, con emoji de respaldo si la imagen falla.
-- El único bloque oscuro es el marcador héroe: es el elemento firma. Ojo con
-  esto si algún día se agrega modo oscuro automático — no es un ajuste
-  cosmético rápido, es una decisión de rediseño (ver roadmap en README.md).
+- El marcador héroe, el footer y el toast son los únicos bloques que se
+  quedan **siempre oscuros** a propósito (el héroe es "el elemento firma"),
+  incluso con el modo oscuro activado — ver más abajo.
+
+## Modo oscuro automático (8 jul 2026)
+
+- Sigue `prefers-color-scheme: dark` del sistema, sin switch manual en la UI.
+- Todo el sistema de color está en variables CSS (`:root` en `styles.css`);
+  el modo oscuro simplemente redefine esas mismas variables dentro de
+  `@media (prefers-color-scheme: dark)` **al final del archivo** — a propósito,
+  no es solo estética: algunas reglas (como el fondo translúcido de
+  `.cabecera`) no usan variable, así que necesitan ganar por orden en el
+  archivo, no solo por el `@media`. Si agregas un color nuevo, dale variable
+  en vez de un hex directo, o el modo oscuro no lo va a agarrar.
+- `--tinta-fija` y `--blanco-fijo` son los 2 tokens que **no cambian nunca**
+  con el tema — úsalos para cualquier elemento nuevo que deba quedarse
+  oscuro siempre (como el héroe/footer/toast), en vez de `--tinta`/`--blanco`
+  normales (esos sí se invierten en modo oscuro).
+
+## Funcionalidades del 8 jul 2026
+
+- **Calendario (.ics)**: `urlICS()` en `script.js` genera el archivo como
+  data URI (sin backend), solo para partidos `"prog"` con `inicioUTC` real.
+  Botón en las tarjetas mini y en el héroe (`iconoCalendario()`).
+- **Cuenta regresiva a la Final**: `renderCuentaFinal()` busca el partido
+  `fase === "final"` en `estado.partidos` y reusa el mismo motor de cuentas
+  regresivas (`tickCuentas()`, ya genérico sobre cualquier `[data-cd]`). Se
+  oculta sola si todavía no hay `inicioUTC` exacto o si la final ya se jugó.
+- **Compartir como imagen**: `generarImagenMarcador()` dibuja un canvas
+  1080×1350 (4:5, funciona bien en feed y en stories) con banderas reales
+  (flagcdn.com tiene CORS abierto, confirmado). Usa `navigator.share` con
+  archivos si el navegador lo soporta (abre el share nativo, incluye
+  stories); si no, descarga el PNG. El marcador/VS va en su **propia fila**
+  debajo de los nombres — si se pone entre las banderas se monta encima
+  cuando el resultado tiene 2 dígitos, ojo con eso si se toca ese layout.
+- **Notificaciones push**: ver README.md § Notificaciones push de goles para
+  la guía de activación completa (necesita cuenta de OneSignal + desplegar
+  `worker-goles/` aparte). El SDK en `index.html` está comentado igual que
+  el bloque de AdSense, mismo patrón.

@@ -114,6 +114,213 @@
     return "https://wa.me/?text=" + encodeURIComponent(texto);
   }
 
+  /* Icono de calendario (SVG inline, mismo criterio que el de WhatsApp). */
+  function iconoCalendario(clase = "ico-md") {
+    return `<svg class="icono-cal ${clase}" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">` +
+      `<rect x="3" y="4.5" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/>` +
+      `<path d="M3 9.5H21" stroke="currentColor" stroke-width="1.8"/>` +
+      `<path d="M7.5 2.5V6.5M16.5 2.5V6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>` +
+      `<rect x="6.5" y="12" width="3.4" height="3.4" rx=".8" fill="currentColor"/>` +
+      `</svg>`;
+  }
+
+  /* Archivo .ics de un partido programado (duración estimada de 2 h),
+     devuelto como data URI listo para usar en href+download. */
+  function urlICS(p) {
+    if (!p.inicioUTC) return null;
+    const inicio = new Date(p.inicioUTC);
+    const fin = new Date(inicio.getTime() + 2 * 60 * 60 * 1000);
+    const aFecha = d => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    const resumen = `${nombreDe(p, "L")} vs ${nombreDe(p, "V")} · Mundial 2026`;
+    const desc = `${DATOS_MUNDIAL.nombresFase[p.fase] || ""} del Mundial 2026. Más info: ${location.origin}${location.pathname}`;
+    const lineas = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Mundial 2026 Partidos//ES",
+      "CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT",
+      `UID:partido-${p.id}@partidosdelmundial2026.pages.dev`,
+      `DTSTAMP:${aFecha(new Date())}`,
+      `DTSTART:${aFecha(inicio)}`,
+      `DTEND:${aFecha(fin)}`,
+      `SUMMARY:${resumen}`,
+      `DESCRIPTION:${desc}`,
+      p.estadio ? `LOCATION:${p.estadio}` : null,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].filter(Boolean).join("\r\n");
+    return "data:text/calendar;charset=utf-8," + encodeURIComponent(lineas);
+  }
+
+  /* ---------------- Compartir el marcador como imagen (canvas) ---------------- */
+  function cargarImagen(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  function dibujarBanderaRedondeada(ctx, img, x, y, w, h, r) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(img, x, y, w, h);
+    ctx.restore();
+  }
+
+  /* Reduce el tamaño de fuente hasta que el texto quepa en maxAncho. */
+  function ajustarFuente(ctx, texto, maxAncho, tamInicial, pesoFamilia) {
+    let tam = tamInicial;
+    ctx.font = `${pesoFamilia} ${tam}px Archivo`;
+    while (ctx.measureText(texto).width > maxAncho && tam > 26) {
+      tam -= 4;
+      ctx.font = `${pesoFamilia} ${tam}px Archivo`;
+    }
+    return tam;
+  }
+
+  async function dibujarEquipoEnImagen(ctx, p, lado, x, yBandera, banderaW, banderaH) {
+    const code = lado === "L" ? p.local : p.visita;
+    const equipo = code && eq(code);
+    const cx = x + banderaW / 2;
+    try {
+      if (!equipo || !equipo.iso) throw new Error("sin bandera real");
+      const img = await cargarImagen(`https://flagcdn.com/w640/${equipo.iso}.png`);
+      dibujarBanderaRedondeada(ctx, img, x, yBandera, banderaW, banderaH, 20);
+    } catch {
+      ctx.textAlign = "center";
+      ctx.font = "180px sans-serif";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(equipo ? equipo.bandera : "🏳️", cx, yBandera + banderaH / 2 + 60);
+    }
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fff";
+    const nombre = (equipo ? equipo.nombre : "Por definir").toUpperCase();
+    const tam = ajustarFuente(ctx, nombre, banderaW + 30, 46, "800");
+    ctx.font = `800 ${tam}px Archivo`;
+    ctx.fillText(nombre, cx, yBandera + banderaH + 70);
+  }
+
+  async function generarImagenMarcador(p) {
+    await Promise.all([
+      document.fonts.load("900 90px Anton"),
+      document.fonts.load("800 40px Archivo"),
+      document.fonts.load("700 30px Archivo"),
+    ]);
+
+    const W = 1080, H = 1350;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+
+    const fondo = ctx.createLinearGradient(0, 0, 0, H);
+    fondo.addColorStop(0, "#10142e");
+    fondo.addColorStop(1, "#080a1a");
+    ctx.fillStyle = fondo;
+    ctx.fillRect(0, 0, W, H);
+
+    // Atmósfera tricolor (mismo lenguaje visual que el marcador héroe en la web)
+    const glowVerde = ctx.createRadialGradient(80, H - 260, 0, 80, H - 260, 620);
+    glowVerde.addColorStop(0, "rgba(13,138,78,.35)");
+    glowVerde.addColorStop(1, "rgba(13,138,78,0)");
+    ctx.fillStyle = glowVerde;
+    ctx.fillRect(0, 0, W, H);
+    const glowAzul = ctx.createRadialGradient(W - 60, H - 180, 0, W - 60, H - 180, 560);
+    glowAzul.addColorStop(0, "rgba(30,63,174,.35)");
+    glowAzul.addColorStop(1, "rgba(30,63,174,0)");
+    ctx.fillStyle = glowAzul;
+    ctx.fillRect(0, 0, W, H);
+
+    const franja = W / 3;
+    ctx.fillStyle = "#0d8a4e"; ctx.fillRect(0, 0, franja, 14);
+    ctx.fillStyle = "#e0243f"; ctx.fillRect(franja, 0, franja, 14);
+    ctx.fillStyle = "#1e3fae"; ctx.fillRect(franja * 2, 0, W - franja * 2, 14);
+    ctx.fillStyle = "#0d8a4e"; ctx.fillRect(0, H - 14, franja, 14);
+    ctx.fillStyle = "#e0243f"; ctx.fillRect(franja, H - 14, franja, 14);
+    ctx.fillStyle = "#1e3fae"; ctx.fillRect(franja * 2, H - 14, W - franja * 2, 14);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#8f98c8";
+    ctx.font = "700 30px Archivo";
+    ctx.fillText("MUNDIAL 2026 · PARTIDOS", W / 2, 110);
+
+    ctx.fillStyle = "#f2b705";
+    ctx.font = "800 34px Archivo";
+    ctx.fillText((DATOS_MUNDIAL.nombresFase[p.fase] || "").toUpperCase(), W / 2, 168);
+
+    const banderaW = 300, banderaH = 210, yBandera = 320;
+    const xL = W / 2 - banderaW - 40, xV = W / 2 + 40;
+    await dibujarEquipoEnImagen(ctx, p, "L", xL, yBandera, banderaW, banderaH);
+    await dibujarEquipoEnImagen(ctx, p, "V", xV, yBandera, banderaW, banderaH);
+
+    // Marcador o "VS" en su propia fila, debajo de los nombres (a todo el ancho,
+    // nunca se monta sobre las banderas sin importar cuántos dígitos tenga el resultado)
+    const yNombres = yBandera + banderaH + 70;
+    const yMarcador = yNombres + 140;
+    ctx.textAlign = "center";
+    if (p.estado === "fin" || p.estado === "vivo") {
+      ctx.fillStyle = "#fff";
+      ctx.font = "900 130px Anton";
+      ctx.fillText(`${p.gl ?? 0} - ${p.gv ?? 0}`, W / 2, yMarcador);
+    } else {
+      ctx.fillStyle = "#f2b705";
+      ctx.font = "900 80px Anton";
+      ctx.fillText("VS", W / 2, yMarcador);
+    }
+
+    ctx.font = "700 34px Archivo";
+    ctx.fillStyle = "#c8cde8";
+    const estadoTxt = p.penales ? `PENALES ${p.penales.l}-${p.penales.v}`
+      : p.estado === "fin" ? "RESULTADO FINAL"
+      : p.estado === "vivo" ? "🔴 EN VIVO"
+      : `${fechaHoraLocal(p).toUpperCase()} · TU HORA LOCAL`;
+    ctx.fillText(estadoTxt, W / 2, yMarcador + 100);
+
+    ctx.font = "700 28px Archivo";
+    ctx.fillStyle = "#8f98c8";
+    ctx.fillText("⚽ partidosdelmundial2026.pages.dev", W / 2, H - 46);
+
+    return canvas;
+  }
+
+  async function compartirImagenPartido(id) {
+    const p = estado.partidos.find(x => x.id == id);
+    if (!p) return;
+    let canvas;
+    try {
+      canvas = await generarImagenMarcador(p);
+    } catch (err) {
+      return;
+    }
+    canvas.toBlob(async blob => {
+      if (!blob) return;
+      const nombreArchivo = `mundial2026-${p.local || "tbd"}-${p.visita || "tbd"}.png`;
+      const file = new File([blob], nombreArchivo, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: "Mundial 2026 Partidos" }); }
+        catch (err) { /* el usuario canceló el share */ }
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nombreArchivo;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  }
+
   /* En modo respaldo, un partido "vivo" con hora de inicio muy vieja
      ya debió terminar: lo mostramos como "por confirmar" para no mentir.
      Devuelve true si algún estado cambió (para repintar solo si hace falta). */
@@ -180,6 +387,9 @@
         <div class="cp-pie">
           <span class="cp-hora">${p.estado === "fin" ? fechaHoraLocal(p) : `<strong>${fechaHoraLocal(p)}</strong>`}</span>
           ${cuenta}
+          ${p.estado === "prog" && p.inicioUTC ? `<a class="btn-mini" href="${urlICS(p)}"
+             download="mundial2026-${p.local || "tbd"}-${p.visita || "tbd"}.ics"
+             aria-label="Añadir al calendario">${iconoCalendario("ico-sm")}</a>` : ""}
           <a class="btn-mini" href="${urlCompartir(p)}" target="_blank" rel="noopener"
              aria-label="Compartir por WhatsApp">${iconoWhatsApp("ico-sm")}</a>
         </div>
@@ -243,7 +453,10 @@
           </div>
         </div>
         <div class="m-acciones">
+          ${modo === "proximo" && p.inicioUTC ? `<a class="btn-ws" href="${urlICS(p)}"
+             download="mundial2026-${p.local || "tbd"}-${p.visita || "tbd"}.ics">${iconoCalendario("ico-md")} Añadir al calendario</a>` : ""}
           <a class="btn-ws" href="${urlCompartir(p)}" target="_blank" rel="noopener">${iconoWhatsApp("ico-md")} Compartir por WhatsApp</a>
+          <button type="button" class="btn-ws" data-img-id="${p.id}">📸 Compartir imagen</button>
         </div>
       </div>`;
 
@@ -405,6 +618,19 @@
     }
   }
 
+  /* ---------------- Cuenta regresiva a la Gran Final (footer) ---------------- */
+  function renderCuentaFinal() {
+    const cont = $("#pie-cuenta-final");
+    if (!cont) return;
+    const final = estado.partidos.find(p => p.fase === "final");
+    if (!final || !final.inicioUTC || final.estado === "fin") {
+      cont.hidden = true;
+      return;
+    }
+    cont.querySelector("[data-cd]").dataset.cd = final.inicioUTC;
+    cont.hidden = false;
+  }
+
   /* ---------------- Cuentas regresivas ---------------- */
   function tickCuentas() {
     const ahora = Date.now();
@@ -526,6 +752,7 @@
     renderResultados();
     renderCuadro();
     renderGrupos();
+    renderCuentaFinal();
     actualizarChip();
     actualizarTitulo();
     tickCuentas();
@@ -543,6 +770,13 @@
     renderTodo(true);
     montarNavActiva();
     setInterval(tickCuentas, 1000);
+
+    document.addEventListener("click", e => {
+      const btn = e.target.closest("[data-img-id]");
+      if (!btn) return;
+      btn.disabled = true;
+      compartirImagenPartido(btn.dataset.imgId).finally(() => { btn.disabled = false; });
+    });
 
     // Vigilante del modo respaldo: si pasa la hora de un partido y seguimos
     // sin API, la página se repinta sola (antes quedaba congelada).

@@ -37,6 +37,11 @@
       var(--verde) 0 33.33%,
       var(--rojo) 33.33% 66.66%,
       var(--azul) 66.66% 100%);
+
+  /* Fijos: NO cambian con el tema. Para elementos que deben verse siempre
+     oscuros (héroe, footer, toast) porque su texto ya asume ese fondo. */
+  --tinta-fija:  #10142e;
+  --blanco-fijo: #ffffff;
 }
 
 /* ---------- Reset básico ---------- */
@@ -251,7 +256,7 @@ h2 { font-size: clamp(1.35rem, 4vw, 2rem); }
   background:
     radial-gradient(120% 160% at 50% -30%, #263066 0%, transparent 55%),
     linear-gradient(160deg, #141a3f 0%, #0c102a 70%);
-  color: var(--blanco);
+  color: var(--blanco-fijo);
   box-shadow: var(--sombra-alta);
   padding: 26px 18px 22px;
   text-align: center;
@@ -363,12 +368,15 @@ h2 { font-size: clamp(1.35rem, 4vw, 2rem); }
   border: 1px solid rgba(255, 255, 255, .28);
   background: rgba(255, 255, 255, .06);
   color: #fff;
+  font-family: inherit;
   font-weight: 700;
   font-size: .85rem;
   text-decoration: none;
   cursor: pointer;
   transition: background .15s ease;
 }
+button.btn-ws { appearance: none; }
+button.btn-ws:disabled { opacity: .6; cursor: wait; }
 
 /* Icono real de WhatsApp (SVG inline) dentro de los botones de compartir */
 .icono-ws {
@@ -377,6 +385,14 @@ h2 { font-size: clamp(1.35rem, 4vw, 2rem); }
 }
 .icono-ws.ico-sm { width: 20px; height: 20px; }
 .icono-ws.ico-md { width: 20px; height: 20px; }
+
+.icono-cal {
+  flex-shrink: 0;
+  display: block;
+  color: currentColor;
+}
+.icono-cal.ico-sm { width: 18px; height: 18px; }
+.icono-cal.ico-md { width: 20px; height: 20px; }
 
 /* Mini tarjetas bajo el héroe */
 .mini-grid {
@@ -721,7 +737,7 @@ h2 { font-size: clamp(1.35rem, 4vw, 2rem); }
    PIE
    ============================================================ */
 .pie {
-  background: var(--tinta);
+  background: var(--tinta-fija);
   color: #b9c0e4;
   padding: 34px 0 46px;
   margin-top: 30px;
@@ -734,6 +750,25 @@ h2 { font-size: clamp(1.35rem, 4vw, 2rem); }
 .pie-credito { font-size: .8rem; margin: 0; }
 .pie a { color: var(--oro); font-weight: 700; }
 
+.pie-cuenta-final[hidden] { display: none; }
+.pie-cuenta-final {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  margin: 0 0 18px;
+  border: 1px solid rgba(242, 183, 5, .35);
+  border-radius: 999px;
+  background: rgba(242, 183, 5, .08);
+}
+.pie-cuenta-etq { font-size: .72rem; letter-spacing: .08em; font-weight: 700; color: var(--oro); }
+.pie-cuenta-num {
+  font-family: var(--fuente-display);
+  font-size: 1.15rem;
+  letter-spacing: .04em;
+  color: #fff;
+}
+
 /* ============================================================
    TOAST (aviso de gol)
    ============================================================ */
@@ -742,7 +777,7 @@ h2 { font-size: clamp(1.35rem, 4vw, 2rem); }
   left: 50%;
   bottom: calc(18px + env(safe-area-inset-bottom));
   transform: translate(-50%, 20px);
-  background: var(--tinta);
+  background: var(--tinta-fija);
   color: #fff;
   font-weight: 800;
   padding: 13px 20px;
@@ -987,4 +1022,38 @@ h2::after {
 @media (min-width: 1440px) {
   :root { --ancho-max: 1240px; }
   body { font-size: 17px; }
+}
+
+/* ============================================================
+   MODO OSCURO AUTOMÁTICO (según el sistema del usuario)
+   Va al final a propósito: para tokens sin variable (como el fondo
+   translúcido de .cabecera) necesita ganarle a la regla original por
+   orden en el archivo, no solo por el @media. El héroe, el footer y el
+   toast NO cambian aquí (ya usan --tinta-fija/--blanco-fijo a propósito,
+   son "el elemento firma") — todo lo demás se adapta redefiniendo los
+   mismos tokens que ya usa cada regla, sin duplicar CSS.
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --blanco: #0d1024;
+    --marfil: #12162e;
+    --niebla: #171b3c;
+    --linea:  #2a2f57;
+
+    --tinta:        #eef0fa;
+    --tinta-suave:  #9aa1c9;
+
+    --verde:        #34d399;
+    --verde-suave:  rgba(52, 211, 153, .16);
+    --rojo:         #f87171;
+    --rojo-suave:   rgba(248, 113, 113, .16);
+    --azul:         #7c9eff;
+    --azul-suave:   rgba(124, 158, 255, .18);
+    --oro-suave:    rgba(242, 183, 5, .16);
+
+    --sombra: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
+    --sombra-alta: 0 4px 10px rgba(0, 0, 0, .35), 0 18px 44px rgba(0, 0, 0, .45);
+  }
+
+  .cabecera { background: rgba(13, 16, 36, .85); }
 }

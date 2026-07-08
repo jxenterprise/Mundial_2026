@@ -1,0 +1,24 @@
+# Worker aparte (NO Pages Function) que vigila los goles en segundo plano
+# y manda las notificaciones push. Ver README.md § Notificaciones push de goles
+# para la guía completa de despliegue paso a paso.
+
+name = "mundial2026-goles-worker"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# Corre cada minuto
+[triggers]
+crons = ["*/1 * * * *"]
+
+# CAMBIAR: el id lo genera "wrangler kv:namespace create GOLES_KV"
+[[kv_namespaces]]
+binding = "GOLES_KV"
+id = "TU_KV_NAMESPACE_ID"
+
+# CAMBIAR: App ID de tu app en OneSignal (Settings → Keys & IDs). No es secreto.
+[vars]
+ONESIGNAL_APP_ID = "TU_ONESIGNAL_APP_ID"
+
+# Estos SÍ son secretos, no van en este archivo — se configuran con:
+#   wrangler secret put FOOTBALL_DATA_TOKEN
+#   wrangler secret put ONESIGNAL_API_KEY

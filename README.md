@@ -38,6 +38,19 @@ con `FOOTBALL_DATA_TOKEN` configurado y confirmado funcionando desde el 4 jul 20
 - **Modo respaldo**: sin API, la web funciona igual con datos reales embebidos
   y lo dice honestamente en el chip del header ("Datos al …").
 - Horarios convertidos automáticamente a la **hora local del visitante**.
+- **📅 Añadir al calendario**: botón .ics en cada partido programado (Google
+  Calendar, Outlook, Apple Calendar) — se genera con JS puro, sin backend.
+- **🏆 Cuenta regresiva a la Gran Final** en el footer (se oculta sola si ya
+  se jugó o si todavía no hay hora exacta).
+- **📸 Compartir como imagen**: genera un marcador tipo story (4:5) con
+  canvas y banderas reales, y usa el share nativo del celular si está
+  disponible (si no, lo descarga).
+- **🌙 Modo oscuro automático**: sigue el tema del sistema operativo. El
+  marcador héroe se queda igual a propósito (es el elemento firma).
+- **🔔 Notificaciones push de goles**: el código ya está listo (SDK de
+  OneSignal + un Cloudflare Worker con Cron Trigger que vigila los goles en
+  segundo plano), pero necesita que actives tu propia cuenta de OneSignal —
+  ver [Notificaciones push de goles](#-notificaciones-push-de-goles-opcional).
 
 ## 📁 Estructura
 
@@ -55,11 +68,19 @@ mundial26/
 │   └── apple-touch-icon.png / og-image.png
 ├── functions/
 │   └── api/partidos.js     ← Cloudflare Pages Function (proxy API segura)
+├── worker-goles/            ← Worker APARTE (cron) para push de goles, opcional
+│   ├── worker.js
+│   └── wrangler.toml
 ├── site.webmanifest / robots.txt / sitemap.xml / ads.txt
 ├── _headers / _redirects
 ├── CLAUDE.md               ← contexto interno del proyecto
 └── README.md               ← este archivo
 ```
+
+> `worker-goles/` no es parte del sitio de Cloudflare Pages — es un proyecto
+> de Cloudflare Worker totalmente aparte (con su propio `wrangler.toml`) que
+> solo hace falta si activas las notificaciones push. Vive en este mismo
+> repo por comodidad, pero se despliega por separado.
 
 > Solo `index.html` y `privacidad.html` quedan en la raíz por ser páginas
 > navegables. `_headers`, `_redirects`, `robots.txt`, `sitemap.xml`, `ads.txt`,
@@ -169,18 +190,59 @@ Pagan por impresiones/clics (RPM).
    clientes de JX Studio.
 3. **Donaciones**: botón Ko-fi/PayPal en el footer.
 
+## 🔔 Notificaciones push de goles (opcional)
+
+El código ya está listo — falta que actives 2 cuentas propias (OneSignal y
+un proyecto de Worker en Cloudflare, aparte del de Pages) y despliegues
+`worker-goles/`. Sin este paso, el sitio funciona exactamente igual, solo
+que nadie recibe avisos de goles.
+
+**Por qué es una pieza aparte:** `functions/api/partidos.js` (la Function
+que ya usa la web) solo corre cuando alguien visita la página — no puede
+"vigilar" nada en segundo plano ni avisar a nadie. Por eso el push necesita
+un **Cloudflare Worker con Cron Trigger**, que es un proyecto de Cloudflare
+totalmente distinto al de Pages (vive en `worker-goles/` en este repo, pero
+se despliega aparte, con su propio `wrangler.toml`).
+
+**Pasos para activarlo:**
+
+1. **Crea tu cuenta en [OneSignal](https://onesignal.com)** (gratis) → crea
+   una app tipo "Web Push" → copia el **App ID** y, en Settings → Keys & IDs,
+   la **REST API Key**.
+2. **Activa el SDK en el frontend**: en `index.html`, busca el bloque
+   "ONESIGNAL — NOTIFICACIONES PUSH DE GOLES (desactivado)", pon tu App ID
+   donde dice `TU_ONESIGNAL_APP_ID` y descomenta el bloque.
+3. **Crea el namespace de KV** (donde el worker recuerda el último marcador
+   de cada partido entre una vuelta y la siguiente):
+   ```bash
+   npm install -g wrangler
+   wrangler kv:namespace create GOLES_KV
+   ```
+   Copia el `id` que te devuelve y pégalo en `worker-goles/wrangler.toml`.
+4. **Completa `worker-goles/wrangler.toml`**: pon tu `ONESIGNAL_APP_ID` (no
+   es secreto, va directo en el archivo).
+5. **Configura los 2 secretos** (esto sí es sensible, nunca va en un archivo):
+   ```bash
+   cd worker-goles
+   wrangler secret put FOOTBALL_DATA_TOKEN   # el mismo token que ya usas en Pages
+   wrangler secret put ONESIGNAL_API_KEY     # la REST API Key del paso 1
+   ```
+6. **Despliega el worker**:
+   ```bash
+   wrangler deploy
+   ```
+   Listo — desde ahí corre solo cada minuto. Puedes ver sus logs con
+   `wrangler tail`.
+
+> La primera vez que el worker ve un partido en juego, solo guarda el
+> marcador de referencia (no manda un aviso "falso" al arrancar). El push
+> sale a partir del segundo cambio de marcador que detecte.
+
 ## 🗺️ Ideas de mejora (roadmap)
 
-**Siguientes en la lista (acordado 4 jul 2026):**
-- [ ] Botón "Añadir a mi calendario" (.ics) en cada partido.
-- [ ] Cuenta regresiva a la Gran Final del 19 de julio en el footer.
-- [ ] Compartir el marcador como imagen (canvas) para stories de Instagram/WhatsApp.
-- [ ] Notificaciones push de goles (OneSignal) — requiere además un Cloudflare
-      Cron Trigger que vigile la API en segundo plano y dispare el push; no es
-      solo agregar el SDK.
-- [ ] Modo oscuro automático según el sistema — ojo: el marcador héroe es hoy
-      *"el único bloque oscuro... el elemento firma"* (ver arriba). Aplicarlo a
-      todo el sitio es una decisión de rediseño, no un ajuste cosmético rápido.
+**✅ Hechas (8 jul 2026):** calendario .ics, cuenta regresiva a la Final,
+compartir como imagen, modo oscuro automático, y el código de notificaciones
+push (activación pendiente de tus cuentas propias, ver arriba).
 
 **Otras ideas, sin fecha:**
 - Página "¿Dónde ver el partido?" por país (oro para SEO + afiliados).

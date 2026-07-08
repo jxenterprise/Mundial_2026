@@ -52,6 +52,21 @@
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
   -->
 
+  <!-- ============ ONESIGNAL — NOTIFICACIONES PUSH DE GOLES (desactivado) ============
+  Cuando tengas tu cuenta de OneSignal:
+  1. Reemplaza TU_ONESIGNAL_APP_ID por tu App ID real (OneSignal → Settings → Keys & IDs).
+  2. Descomenta el script de abajo.
+  3. Despliega también el worker de /worker-goles (ver README.md § Notificaciones push
+     de goles) — sin eso, la gente se suscribe pero nunca le llega ningún aviso.
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function (OneSignal) {
+      await OneSignal.init({ appId: "TU_ONESIGNAL_APP_ID" });
+    });
+  </script>
+  -->
+
   <!-- ============ DATOS ESTRUCTURADOS (JSON-LD) ============ -->
   <script type="application/ld+json">
   {
@@ -275,6 +290,10 @@
   <footer class="pie">
     <div class="contenedor">
       <p class="pie-marca">⚽ <strong>Mundial 2026 Partidos</strong></p>
+      <div id="pie-cuenta-final" class="pie-cuenta-final" hidden>
+        <span class="pie-cuenta-etq">🏆 Faltan para la Gran Final</span>
+        <span class="pie-cuenta-num" data-cd=""></span>
+      </div>
       <p class="pie-nota">
         Sitio informativo hecho por aficionados. No estamos afiliados a la FIFA ni a las federaciones;
         nombres de selecciones y resultados se usan solo con fines informativos.
